@@ -28,6 +28,7 @@ class CalculatorBrain {
     
     func setOperand(operand:Double) {
         self.accumulator = operand
+        internalProgram.append(operand as AnyObject)
         if !isPartialResult {
             allButLastItems = toString(operand)
             lastItem = ""
@@ -37,6 +38,8 @@ class CalculatorBrain {
     //MARK: private variables
     
     private var accumulator = 0.0
+    private var internalProgram = [AnyObject]()
+    
     private var allButLastItems = " "
     private var lastItem = ""
     
@@ -103,6 +106,7 @@ class CalculatorBrain {
     //MARK: public functions
     
     func performOperation(symbol: String) {
+        internalProgram.append(symbol as AnyObject)
         if let operation = operations[symbol] {
             switch(operation) {
             case .Constant (let value):
@@ -128,6 +132,26 @@ class CalculatorBrain {
         }
     }
     
+    
+    typealias PropertyList = AnyObject
+    var program: PropertyList {
+        get {
+            return internalProgram as CalculatorBrain.PropertyList
+        }
+        set {
+            clear()
+            if let arrayOfOps = newValue as? [AnyObject] {
+                for op in arrayOfOps {
+                    if let operand = op as? Double {
+                        setOperand(operand: operand)
+                    } else if operation = op as? String {
+                        performOperation(symbol: operation)
+                    }
+                }
+            }
+        }
+    }
+    
     var result: Double {
         get {
             return accumulator
@@ -139,5 +163,6 @@ class CalculatorBrain {
         lastItem = ""
         accumulator = 0.0
         pending = nil
+        internalProgram.removeAll()
     }
 }
