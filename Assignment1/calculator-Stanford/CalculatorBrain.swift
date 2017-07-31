@@ -42,7 +42,7 @@ class CalculatorBrain {
     private var lastItem = ""
     
     private var operations:[String:Operation] = [
-        "π"  :  Operation.Constant(M_PI),
+        "π"  :  Operation.Constant(Double.pi),
         "e"  :  Operation.Constant(M_E),
         "√"  :  Operation.UnaryOperation(sqrt),
         "cos":  Operation.UnaryOperation(cos),
@@ -94,7 +94,7 @@ class CalculatorBrain {
         switch value {
         case M_E:
             return "e"
-        case M_PI:
+        case Double.pi:
             return "π"
         default:
             return String(value)
