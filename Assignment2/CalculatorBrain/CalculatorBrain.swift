@@ -26,25 +26,52 @@ class CalculatorBrain {
     
     var lastBinaryOperationSymbol = ""
     
-    func setOperand(operand:Double) {
-        self.accumulator = operand
-        internalProgram.append(operand as AnyObject)
-        if !isPartialResult {
-            allButLastItems = toString(operand)
-            lastItem = ""
-        }
-    }
+    var variableValues: Dictionary<String, Double> = [:]
     
     //MARK: private variables
     
-    private var accumulator = 0.0
-    private var internalProgram = [AnyObject]()
+    private var accumulator:Accumulator = .operand(0.0)
+    private var internalProgram = [Any]()
     
     private var allButLastItems = " "
     private var lastItem = ""
     
+    private enum Accumulator {
+        case operand(Double)
+        case variable(String)
+        
+        var name:String {
+            switch self {
+            case .operand(let operand):
+                return toString(operand)
+            case .variable(let name):
+                return name
+            }
+        }
+        
+        private func toString(_ value:Double)->String {
+            switch value {
+            case M_E:
+                return "e"
+            case Double.pi:
+                return "π"
+            default:
+                return String(value)
+            }
+        }
+    }
+    
+    private var accumulatorValue: Double {
+        switch accumulator {
+        case .operand(let operand):
+            return operand
+        case .variable(let name):
+            return variableValues[name] ?? 0
+        }
+    }
+
     private var operations:[String:Operation] = [
-        "π"  :  Operation.Constant(M_PI),
+        "π"  :  Operation.Constant(Double.pi),
         "e"  :  Operation.Constant(M_E),
         "√"  :  Operation.UnaryOperation(sqrt),
         "cos":  Operation.UnaryOperation(cos),
@@ -84,26 +111,42 @@ class CalculatorBrain {
             if !binaryCanIgnoreDescription {
                 allButLastItems += lastItem
                 allButLastItems += pending.symbol
-                lastItem = toString(accumulator)
+                lastItem = accumulator.name
             }
-            accumulator = pending.binaryFunction(pending.firstOperand,accumulator)
+            accumulator = .operand(pending.binaryFunction(pending.firstOperand,accumulatorValue))
             self.pending = nil
             binaryCanIgnoreDescription = false
         }
     }
     
-    private func toString(_ value:Double)->String {
-        switch value {
-        case M_E:
-            return "e"
-        case M_PI:
-            return "π"
-        default:
-            return String(value)
-        }
+    private func clear() {
+        allButLastItems = ""
+        lastItem = ""
+        accumulator = .operand(0.0)
+        pending = nil
+        internalProgram.removeAll()
     }
     
     //MARK: public functions
+    
+    func setOperand(operand:Double) {
+        accumulator = .operand(operand)
+        internalProgram.append(operand as Any)
+        if !isPartialResult {
+            allButLastItems = accumulator.name
+            lastItem = ""
+        }
+    }
+    
+    func setOperand(variableName: String) {
+        let operand = variableValues[variableName] ?? 0
+        accumulator = .variable(variableName)
+        internalProgram.append([variableName:operand] as Any)
+        if !isPartialResult {
+            allButLastItems = variableName
+            lastItem = ""
+        }
+    }
     
     func performOperation(symbol: String) {
         internalProgram.append(symbol as AnyObject)
@@ -115,37 +158,38 @@ class CalculatorBrain {
                 if isPartialResult {
                     guard let pending = pending else { return }
                     allButLastItems += lastItem
-                    lastItem = pending.symbol + symbol + "(" + toString(accumulator) + ")"
+                    lastItem = pending.symbol + symbol + "(" + accumulator.name + ")"
                     binaryCanIgnoreDescription = true
                 } else {
                     allButLastItems = symbol + "(" + allButLastItems
                     lastItem += ")"
                 }
-                accumulator = function(accumulator)
+                accumulator = .operand(function(accumulatorValue))
             case .BinaryOperation(let function):
                 lastBinaryOperationSymbol = symbol
                 executePendingBinaryOperation()
-                pending = PendingBinaryOperationInfo(binaryFunction: function, symbol:symbol, firstOperand: accumulator)
+                pending = PendingBinaryOperationInfo(binaryFunction: function, symbol:symbol, firstOperand: accumulatorValue)
             case .Equal:
                 executePendingBinaryOperation()
             }
         }
     }
     
-    
-    typealias PropertyList = AnyObject
+    typealias PropertyList = Any
     var program: PropertyList {
         get {
             return internalProgram as CalculatorBrain.PropertyList
         }
         set {
             clear()
-            if let arrayOfOps = newValue as? [AnyObject] {
+            if let arrayOfOps = newValue as? [Any] {
                 for op in arrayOfOps {
                     if let operand = op as? Double {
                         setOperand(operand: operand)
-                    } else if operation = op as? String {
+                    } else if let operation = op as? String {
                         performOperation(symbol: operation)
+                    } else if let dictionary = op as? Dictionary<String,Double>, let variableName = dictionary.first?.key {
+                        setOperand(variableName: variableName)
                     }
                 }
             }
@@ -154,15 +198,12 @@ class CalculatorBrain {
     
     var result: Double {
         get {
-            return accumulator
+            return accumulatorValue
         }
     }
     
-    func clear() {
-        allButLastItems = ""
-        lastItem = ""
-        accumulator = 0.0
-        pending = nil
-        internalProgram.removeAll()
+    func clearMemory() {
+        variableValues = [:]
+        clear()
     }
 }

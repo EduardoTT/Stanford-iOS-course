@@ -11,7 +11,7 @@ import UIKit
 class CalculatorViewController: UIViewController {
     
     @IBAction func Clear() {
-        brain.clear()
+        brain.clearMemory()
         displayValue = 0
     }
     
@@ -43,13 +43,7 @@ class CalculatorViewController: UIViewController {
     
     var brain = CalculatorBrain()
     
-    @IBAction private func performOperation(_ sender: UIButton) {
-        if isUserInTheMiddleOfTyping {
-            brain.setOperand(operand: displayValue)
-            isUserInTheMiddleOfTyping = false
-        }
-        guard let mathematicalSymbol = sender.currentTitle else { return }
-        brain.performOperation(symbol: mathematicalSymbol)
+    private func updateDisplayAndHistory() {
         displayValue = brain.result
         historyDisplay.text = brain.description
         if brain.isPartialResult {
@@ -57,6 +51,28 @@ class CalculatorViewController: UIViewController {
         } else {
             historyDisplay.text! += "="
         }
+    }
+    
+    @IBAction private func performOperation(_ sender: UIButton) {
+        if isUserInTheMiddleOfTyping {
+            brain.setOperand(operand: displayValue)
+            isUserInTheMiddleOfTyping = false
+        }
+        guard let mathematicalSymbol = sender.currentTitle else { return }
+        brain.performOperation(symbol: mathematicalSymbol)
+        updateDisplayAndHistory()
+    }
+    
+    @IBAction func setMemory() {
+        brain.variableValues["M"] = displayValue
+        let storedProgram = brain.program
+        brain.program = storedProgram
+        updateDisplayAndHistory()
+        isUserInTheMiddleOfTyping = false
+    }
+    
+    @IBAction func getMemory() {
+        brain.setOperand(variableName: "M")
     }
 }
 
